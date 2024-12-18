@@ -3,6 +3,8 @@
 Created on Fri Sep 27 17:10:18 2024
 
 @author: 33501
+
+此代码分析闪电干旱频率、降水、潜在蒸散、根区土壤湿度的三个未来情景与历史的差异
 """
 import xarray as xa
 import numpy as np
