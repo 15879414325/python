@@ -11,6 +11,10 @@ from PIL import Image
 import os
 import wx
 import re
+import threading
+import time
+
+
 
 #定义拖放文件类
 class FileDrop( wx.FileDropTarget ):
@@ -83,7 +87,7 @@ class Transform(wx.Frame):
         self.trans_button = wx.Button(self,label='转换',pos=(155,180),size=(50,25))
         self.trans_button.SetFont(self.b_font)
         self.trans_button.SetBackgroundColour(self.b_backcolor)
-        self.trans_button.Bind(wx.EVT_BUTTON,self.transform)
+        self.trans_button.Bind(wx.EVT_BUTTON,self.running_task)
         
         #创建列表储存文件
         self.files = []
@@ -92,16 +96,16 @@ class Transform(wx.Frame):
         """
         定义输入事件函数，处理点击输入按钮后的一系列操作
         """
-        self.input_dir.Clear()
+        
         wildcards = ""
-        self.files = []
         input_fileDialog = wx.FileDialog(self, message="选择输入照片", wildcard=wildcards, style=wx.FD_OPEN | wx.FD_MULTIPLE)
         if input_fileDialog.ShowModal() == wx.ID_OK:
+            self.input_dir.Clear()
             self.files = input_fileDialog.GetPaths()
         for f in self.files:
             self.input_dir.write(os.path.basename(f)+' ')
         input_fileDialog.Destroy()
-        
+
     def output_event(self,event):
         """
         定义输出事件函数，处理点击输出按钮后的一系列操作
@@ -119,23 +123,53 @@ class Transform(wx.Frame):
         定义格式选择事件函数，处理下拉框选择格式后的一系列操作
         """
         self.mat = self.format_button.Value
-        
-    def transform(self,event):
+    
+    def deal(self):
+        schd = 0
+        for file in self.files:
+            schd+=1
+            print(schd)
+            im = Image.open(file)
+            if os.path.exists(self.savepath+os.sep+os.path.basename(file).split('.')[0]+re.findall('\((.*)\)',self.mat)[0]):
+                im.save(self.savepath+os.sep+os.path.basename(file).split('.')[0]+'(副本)'+re.findall('\((.*)\)',self.mat)[0])
+            else:
+                im.save(self.savepath+os.sep+os.path.basename(file).split('.')[0]+re.findall('\((.*)\)',self.mat)[0])
+            self.gauge.SetValue(schd)
+            time.sleep(5)
+        self.tip_over = wx.MessageDialog(self,'转换成功!', "", wx.YES_DEFAULT | wx.ICON_QUESTION)
+        self.tip_over.ShowModal()
+        self.tip_over.Destroy()
+    
+    def transform(self):
         """
         定义照片格式转换事件函数，处理点击转换后的一系列操作
         """
         try:
+            schd = 0
             for file in self.files:
+                schd+=1
                 im = Image.open(file)
-                if os.path.exists(self.savepath+os.sep+os.path.basename(file).split('.')[0]+re.findall('\((.*)\)',self.mat)[0]):
-                    im.save(self.savepath+os.sep+os.path.basename(file).split('.')[0]+'(副本)'+re.findall('\((.*)\)',self.mat)[0])
+                if os.path.exists(self.savepath+os.sep+''.join(os.path.basename(file).split('.')[:-1])+re.findall('\((.*)\)',self.mat)[0]):
+                    im.save(self.savepath+os.sep+''.join(os.path.basename(file).split('.')[:-1])+'(副本)'+re.findall('\((.*)\)',self.mat)[0])
                 else:
-                    im.save(self.savepath+os.sep+os.path.basename(file).split('.')[0]+re.findall('\((.*)\)',self.mat)[0])
-            self.tip_over = wx.MessageDialog(self,'转换成功!', "", wx.YES_DEFAULT | wx.ICON_QUESTION)
-            if self.tip_over.ShowModal() == wx.ID_YES:
+                    im.save(self.savepath+os.sep+''.join(os.path.basename(file).split('.')[:-1])+re.findall('\((.*)\)',self.mat)[0])
+
+                keep_going, _ = self.dialog.Update(schd)
+                
+                if not keep_going:
+                    wx.MessageBox("任务已中断！", "提示", wx.OK | wx.ICON_WARNING)
+                    break
+            
+            self.dialog.Destroy()
+            
+            if keep_going:
+                self.tip_over = wx.MessageDialog(self, '转换成功!', "", wx.YES_DEFAULT | wx.ICON_QUESTION)
+                self.tip_over.ShowModal()
                 self.tip_over.Destroy()
+            
         except:
-            self.tip_err = wx.MessageDialog(self,'出错啦!', "错误信息提示", wx.YES_DEFAULT | wx.ICON_QUESTION)
+            self.dialog.Destroy()
+            self.tip_err = wx.MessageDialog(self,'出错啦!', "错误信息提示", wx.OK | wx.ICON_WARNING)
             if self.tip_err.ShowModal() == wx.ID_YES:
                 self.tip_err.Destroy()
                 
@@ -150,8 +184,25 @@ class Transform(wx.Frame):
             self.Destroy()
         else:
             self.tip_close.Destroy()  
-        
 
+
+    def running_task(self,event):
+        """
+        多线程运行转换程序
+        """
+        self.max_value = len(self.files)
+        self.dialog = wx.ProgressDialog(    #进度条
+            "任务进度",
+            "正在处理...",
+            maximum=self.max_value,
+            parent=self,
+            style=wx.PD_AUTO_HIDE | wx.PD_APP_MODAL | wx.PD_CAN_ABORT
+        )
+        thread=threading.Thread(target=self.transform)
+        thread.start()
+        
+        
+        
 if __name__=='__main__':
     mean_ct= wx.App()
     main = Transform(None,title=u"照片格式转换",
