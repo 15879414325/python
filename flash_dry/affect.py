@@ -4,8 +4,8 @@ Created on Thu Aug 15 21:20:01 2024
 
 @author: 33501
 
-此代码分析闪电干旱开始后异常值处理后LAI下降到0所需时间均值和
-闪电干旱期间异常值处理后LAI最小值受干燥指数和树木覆盖度的双重影响
+This code analyzes the average time required for LAI to drop to 0 after outlier processing following the onset of lightning drought, and
+The minimum value of LAI after outlier processing during the lightning drought is influenced by both the dryness index and the tree coverage rate.
 """
 
 import numpy as np
@@ -23,12 +23,12 @@ import rasterio as ra
 import warnings
 warnings.filterwarnings("ignore")
 
-def resample(array,target_shape):   #重采样函数
+def resample(array,target_shape):   #Resampling function
     zoom_factors = [target_shape[i] / array.shape[i] for i in range(len(target_shape))]
     resampled_array = ndimage.zoom(array, zoom_factors, order=1)
     return resampled_array
 
-#中国区域mask
+#Chinese regional mask
 # shp = ogr.Open(r"D:\work\code\yuan\data\中国标准行政区划数据GS（2024）0650号\shp格式\中国_省.shp")
 # lyr = shp.GetLayer()
 # driver = gdal.GetDriverByName('MEM')
@@ -39,10 +39,10 @@ def resample(array,target_shape):   #重采样函数
 # gdal.RasterizeLayer(shp_ds_SM, [1], lyr, options=options)
 # cn_mask = shp_ds_SM.ReadAsArray().astype(np.int16)
 
-#获取mask
+#Obtain the mask
 cn_mask = gdal.Open(r"D:\work\code\yuan\data\mask.tif").ReadAsArray()
 
-#获取净辐射、潜在蒸散、降水、植被、温度数据
+#Obtain net radiation, potential evapotranspiration, precipitation, vegetation, and temperature data
 sr = xr.open_dataset(r"D:\work\code\yuan\data\dry\sr_use.nc")['sr'].values
 pev = xr.open_dataset(r"D:\work\code\yuan\data\potential_evaporate\pev_mean.nc")['pev'].values
 tp = xr.open_dataset(r"D:\work\code\yuan\data\total_precipitation\tp.nc")['tp'].values
@@ -52,16 +52,16 @@ lon = xr.open_dataset(r"D:\work\code\yuan\data\potential_evaporate\pev_mean.nc")
 lat = xr.open_dataset(r"D:\work\code\yuan\data\potential_evaporate\pev_mean.nc")['lat'].values
 
 
-#获取干燥指数数据
+#Obtain the data of the dryness index
 dry_index = ra.open(r"D:\work\gee_\gee_download\yuan\test\dry.tif").read()[0]
 dry_index = resample(dry_index,(221,273))
 dry_index[dry_index>4]=np.nan
 dry_index[cn_mask==0]=np.nan
 
-#计算树木覆盖度
+#Calculate the tree coverage rate
 tc_index = vc[0]/(vc[0]+vc[1])
 
-#将干燥指数和树木覆盖度组合
+#Combine the dryness index with the tree coverage rate
 p_dry = np.zeros(dry_index.shape,dtype=float)
 p_dry[::] = np.nan
 p_dry[(dry_index>=0) & (dry_index<0.5)]=10
@@ -79,15 +79,15 @@ p_tc[(tc_index>=0.75) & (tc_index<=1)]=4
 p_arr = p_dry+p_tc
 p_arr[cn_mask==0]=np.nan
 
-#干燥指数
+#drying index
 arid = dry_index
 
-#计算树木覆盖度
+#Calculate the tree coverage rate
 tc_index = vc[0]/(vc[0]+vc[1])
 
-#将计算绘图一起打包为函数
+#Package the calculation and plotting together into a function
 def fun(path,key):
-    #获取土壤数据
+    #Obtain soil data
     path_head = r'D:\work\code\yuan\data\soil_moisture\Nc'
     data = xr.open_dataset(path_head + os.sep + r"swvl30_pentad.nc")
     time = data['time'].values
@@ -96,7 +96,7 @@ def fun(path,key):
     pentad = data['pentad'].values
     S = (pentad-np.nanmean(pentad,axis=0))/np.nanstd(pentad,axis=0)
     
-    #获取权重数据
+    #Obtain the weight data
     for year in range(2001,2024):
         quan_dataset = xr.open_dataset(f"D:/work/code/yuan/data/soil_moisture/Nc/quan/swvl_{year}_quan.nc")
         quan = quan_dataset['quan'].values
@@ -105,7 +105,7 @@ def fun(path,key):
             continue
         quans = np.concatenate((quans,quan))
 
-    #获取LAI数据并进行异常值处理
+    #Obtain the LAI data and perform outlier processing
     LAI_dataset = xr.open_dataset(path)[key].values
     for year in range(23):
         if year ==0:
@@ -119,9 +119,9 @@ def fun(path,key):
     mask[::] = 1
     mask[~(np.nanmean(quans,axis=0)>=0.01)]=0
     
-    #大体类似闪电干旱识别代码
-    count_all = np.zeros(quans[0].shape)    #LAI下降到0以下的干旱次数
-    t_all = np.zeros(quans[0].shape)    #所有干旱期间LAI下降到0以下所需时间总和
+    #Similar to the flash drought identification code
+    count_all = np.zeros(quans[0].shape)    #The number of droughts where LAI drops below 0
+    t_all = np.zeros(quans[0].shape)    #The total time required for the LAI to drop below 0 during all periods of drought
     dro_num = np.zeros(mask.shape,dtype=float)
     for year in range(0,quans.shape[0],73):
         arr = quans[year:year+73]
@@ -136,10 +136,10 @@ def fun(path,key):
         ed_switch[::] = False
         ed_count = np.zeros(mask.shape,dtype=int)
         
-        LAI_switch = np.zeros(mask.shape,dtype=bool) #LAI统计开关
+        LAI_switch = np.zeros(mask.shape,dtype=bool) #LAI Statistical Switch
         LAI_switch[::] = False
         
-        per_count = np.zeros(mask.shape,dtype=int)  #一次LAI下降0以下计数器
+        per_count = np.zeros(mask.shape,dtype=int)  #A count where the LAI value drops below 0
         
         for i in range(73):
             st_switch[st_count>5]=False
@@ -171,22 +171,22 @@ def fun(path,key):
     L_mean = t_all/count_all
     L_mean[np.isnan(p_arr)]=np.nan
     
-    #为排除极端值干扰，取第99%分位
+    #To eliminate the influence of extreme values, the 99th percentile is taken.
     LAI_min = np.percentile(LAI, 99,axis=0)
     
-    #获取LAI下降0以下所需天数均值与干燥指数-树木覆盖度影响矩阵
+    #Obtain the average number of days required for LAI to drop below 0 and the influence matrix of dryness index - tree coverage
     pic = np.array([[np.nanmean(L_mean[(p_arr<14.5)&(p_arr>13.5)]),np.nanmean(L_mean[(p_arr<24.5)&(p_arr>23.5)]),np.nanmean(L_mean[(p_arr<34.5)&(p_arr>33.5)]),np.nanmean(L_mean[(p_arr<44.5)&(p_arr>43.5)])],
           [np.nanmean(L_mean[(p_arr<13.5)&(p_arr>12.5)]),np.nanmean(L_mean[(p_arr<23.5)&(p_arr>22.5)]),np.nanmean(L_mean[(p_arr<33.5)&(p_arr>32.5)]),np.nanmean(L_mean[(p_arr<43.5)&(p_arr>42.5)])],
           [np.nanmean(L_mean[(p_arr<12.5)&(p_arr>11.5)]),np.nanmean(L_mean[(p_arr<22.5)&(p_arr>21.5)]),np.nanmean(L_mean[(p_arr<32.5)&(p_arr>31.5)]),np.nanmean(L_mean[(p_arr<42.5)&(p_arr>41.5)])],
           [np.nanmean(L_mean[(p_arr<11.5)&(p_arr>10.5)]),np.nanmean(L_mean[(p_arr<21.5)&(p_arr>20.5)]),np.nanmean(L_mean[(p_arr<31.5)&(p_arr>30.5)]),np.nanmean(L_mean[(p_arr<41.5)&(p_arr>40.5)])]])
     
-    #获取LAI最小值与干燥指数-树木覆盖度影响矩阵
+    #Obtain the minimum value of LAI and the influence matrix of dryness index - tree coverage
     pic_b = np.array([[np.nanmean(LAI_min[(p_arr<14.5)&(p_arr>13.5)]),np.nanmean(LAI_min[(p_arr<24.5)&(p_arr>23.5)]),np.nanmean(LAI_min[(p_arr<34.5)&(p_arr>33.5)]),np.nanmean(LAI_min[(p_arr<44.5)&(p_arr>43.5)])],
           [np.nanmean(LAI_min[(p_arr<13.5)&(p_arr>12.5)]),np.nanmean(LAI_min[(p_arr<23.5)&(p_arr>22.5)]),np.nanmean(LAI_min[(p_arr<33.5)&(p_arr>32.5)]),np.nanmean(LAI_min[(p_arr<43.5)&(p_arr>42.5)])],
           [np.nanmean(LAI_min[(p_arr<12.5)&(p_arr>11.5)]),np.nanmean(LAI_min[(p_arr<22.5)&(p_arr>21.5)]),np.nanmean(LAI_min[(p_arr<32.5)&(p_arr>31.5)]),np.nanmean(LAI_min[(p_arr<42.5)&(p_arr>41.5)])],
           [np.nanmean(LAI_min[(p_arr<11.5)&(p_arr>10.5)]),np.nanmean(LAI_min[(p_arr<21.5)&(p_arr>20.5)]),np.nanmean(LAI_min[(p_arr<31.5)&(p_arr>30.5)]),np.nanmean(LAI_min[(p_arr<41.5)&(p_arr>40.5)])]])
     
-    #绘图
+    #plot
     colors = ['#C74D26','#E38D26','#F1CC74','#F2F2F2','#A4C97C','#5F9C61','#2C6344']
     cmap = mpl.colors.LinearSegmentedColormap.from_list("custom_cmap", colors)
     colors2 = ['#D8412B','#FEE79A','#E7F6EB','#4A7BB7']
@@ -280,6 +280,7 @@ def fun(path,key):
 fun(r"D:\work\code\yuan\data\LAI\LAI.nc",'LAI')
 fun(r"D:\work\code\yuan\data\GPP\GPP.nc",'GPP')
 fun(r"D:\work\code\yuan\data\PET\PET.nc",'PET')
+
 
 
 
