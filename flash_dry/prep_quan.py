@@ -4,7 +4,9 @@ Created on Wed Aug  7 15:35:23 2024
 
 @author: 33501
 
-此代码将pentad数据进行求每pentad数据所在年份绘图位置(类似百分位数)运算，得到权重数据
+This code performs an operation on the pentad data to determine 
+the plotting position (similar to percentile) of each pentad data 
+within the corresponding year, and then obtains the weight data.
 """
 
 import pandas as pd
@@ -16,7 +18,7 @@ import os
 
 def nanmeppf(li):
     """
-    此函数将meppf函数增加去除nan值计算得到
+    This function adds the meppf function and removes the nan values to calculate the result.
     """
     l = li.copy()
     out = np.zeros(l.shape)
@@ -45,12 +47,12 @@ lon = data['lon'].values
 lat = data['lat'].values
 pentad = data['pentad'].values
 
-#研究时间段
+#Research period
 start_year = 1980
 end_year = 2023
 
 for year in range(start_year,end_year+1):
-    if year == start_year:      #只需研究生长期，中国范围的生长期为3-10月，其余去除
+    if year == start_year:      #The growing period in China is only for a long time, ranging from March to October. The rest is excluded.
         pentad[0:(11+73*(year-(start_year-1))),:,:] = np.nan
         pentad[(61+73*(year-(start_year-1))):73,:,:] = np.nan
     else:
