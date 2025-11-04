@@ -6,4 +6,6 @@ affect.py:
 
 <img src="affect.png" style="width: 300px; height: auto;">
 
+dro_pic.py:
 
+<img src="dro_pic.png" style="width: 300px; height: auto;">
