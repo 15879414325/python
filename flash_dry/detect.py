@@ -155,7 +155,7 @@ for year in range(0,quans.shape[0],73):
     ind+=1
 
 
-out = xr.Dataset({'hist':(['time','lat','lon'],dro_num)},{'time':[i for i in range(1980,2015)],'lat':lat,'lon':lon})
+#out = xr.Dataset({'hist':(['time','lat','lon'],dro_num)},{'time':[i for i in range(1980,2015)],'lat':lat,'lon':lon})
 
 # out.to_netcdf(r'D:\\work\\code\\yuan\\data\\CMIP6\\ssp\\hist_30s.nc')
 
@@ -213,6 +213,7 @@ plt.plot([123,123],[3,25],lw=2,c='black',zorder=12)
 
 
     
+
 
 
 
